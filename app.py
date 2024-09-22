@@ -41,9 +41,17 @@ class ClearSession(Resource):
     def delete(self):
         session.clear()
         return {}, 204
+    
+
+    @app.before_request
+    def log_request_info():
+     app.logger.debug('Headers: %s', request.headers)
+    app.logger.debug('Body: %s', request.get_data())
+
 
 class Signup(Resource):
     def post(self):
+        app.logger.debug('Received signup request')
         json_data = request.get_json()
         username = json_data.get('username')
         password = json_data.get('password')
