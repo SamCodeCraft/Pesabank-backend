@@ -13,8 +13,8 @@ from models import db, User, Subscription, Transaction, TransactionType, Loan, S
 
 from flask import Flask, send_from_directory
 
-app = Flask(__name__, static_folder='../frontend/build')
-CORS(app)
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "https://samcodecraft.github.io/Pesabank-frontend/"}})
 
 @app.route('/')
 def serve():
