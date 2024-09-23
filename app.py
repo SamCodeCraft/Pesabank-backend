@@ -6,6 +6,8 @@ from flask_migrate import Migrate
 from flask_restful import Api, Resource
 from datetime import date
 from flask_cors import CORS
+import logging
+
 
 
 
@@ -36,6 +38,15 @@ migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
 api = Api(app)
 
+def test_db_connection():
+    try:
+        # Running a simple query to check the connection
+        db.session.execute('SELECT 1')
+        logger.info("Database connection is working.")
+    except Exception as e:
+        logger.error("Database connection failed: %s", e)
+        return jsonify({"message": "Database connection failed."}), 500
+
 # Resources 
 class ClearSession(Resource):
     def delete(self):
@@ -43,27 +54,65 @@ class ClearSession(Resource):
         return {}, 204
 
 
+# Configure the logger
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 class Signup(Resource):
     def post(self):
+        logger.debug("Signup POST request received.")
         json_data = request.get_json()
+
+        if not json_data:
+            logger.error("Request JSON is missing.")
+            return {'message': 'Request JSON is missing.'}, 400
+
         username = json_data.get('username')
         password = json_data.get('password')
 
         if not username or not password:
+            logger.error("Username and/or password not provided.")
             return {'message': 'Username and password are required.'}, 400
 
         if User.query.filter_by(username=username).first():
+            logger.error(f"Username '{username}' already exists.")
             return {'message': 'Username already exists.'}, 409
 
         new_user = User(username=username)
-        new_user.password = bcrypt.generate_password_hash(password).decode('utf-8') 
+        new_user.password = bcrypt.generate_password_hash(password).decode('utf-8')
 
-        db.session.add(new_user)
-        db.session.commit()
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+            logger.info(f"New user '{username}' created successfully.")
+        except Exception as e:
+            logger.exception("Error while creating new user.")
+            return {'message': 'Internal server error.'}, 500
 
         session['user_id'] = new_user.id
-
         return new_user.to_dict(), 201
+
+# class Signup(Resource):
+#     def post(self):
+#         json_data = request.get_json()
+#         username = json_data.get('username')
+#         password = json_data.get('password')
+
+#         if not username or not password:
+#             return {'message': 'Username and password are required.'}, 400
+
+#         if User.query.filter_by(username=username).first():
+#             return {'message': 'Username already exists.'}, 409
+
+#         new_user = User(username=username)
+#         new_user.password = bcrypt.generate_password_hash(password).decode('utf-8') 
+
+#         db.session.add(new_user)
+#         db.session.commit()
+
+#         session['user_id'] = new_user.id
+
+#         return new_user.to_dict(), 201
     
     
     
@@ -392,9 +441,9 @@ def create_saving():
         return jsonify({'message': 'Saving created successfully'}), 201
       
 
-@app.errorhandler(404)
-def not_found_error(error):
-    return jsonify({'message': 'Resource not found'}), 404
+# @app.errorhandler(404)
+# def not_found_error(error):
+#     return jsonify({'message': 'Resource not found'}), 404
 
 if __name__ == '__main__':
     app.run(debug=True)
